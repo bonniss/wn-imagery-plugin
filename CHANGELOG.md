@@ -29,7 +29,7 @@ First release.
 
 ### Notes
 
-- Requires Winter 1.2, PHP 8.0.2+, `bonniss26/lqip` ^0.1, and `ext-gd` or
+- Requires Winter 1.2, PHP 8.0.2+, `bonniss26/lqip` ^0.2, and `ext-gd` or
   `ext-imagick`.
 
 [Unreleased]: https://github.com/bonniss/wn-imagery-plugin/compare/v1.0.0...HEAD
