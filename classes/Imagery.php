@@ -113,10 +113,18 @@ class Imagery
      * filter. Works for every mode that has a CSS form, including css_only's
      * custom property; a hash mode (thumbhash) falls back as css() does.
      *
+     * `aspect_ratio: true` among the options also reserves the image's shape
+     * (`aspect-ratio:1600/1067`), so the element has its final height before
+     * the photo arrives. It is a presentation flag, not a generation option, so
+     * it never reaches the library or the cache key.
+     *
      * @param mixed $input
      */
     public function style($input, array $overrides = []): string
     {
+        $aspectRatio = !empty($overrides['aspect_ratio']);
+        unset($overrides['aspect_ratio']);
+
         $options = $this->resolveOptions($overrides);
         if ($options === null) {
             return '';
@@ -128,7 +136,30 @@ class Imagery
 
         $result = $this->result($input, $overrides);
 
-        return $result ? $result->toStyleAttribute() : '';
+        return $result ? $result->toStyleAttribute(['aspect_ratio' => $aspectRatio]) : '';
+    }
+
+    /**
+     * The image's displayed size - after EXIF rotation - as
+     * ['width' => int, 'height' => int], or null: the `lqipSize` filter.
+     *
+     * Read from the cache beside the placeholder, so a template can write
+     * width/height attributes without touching the file, which on a remote
+     * disk would mean downloading it. Follows the same miss rules as the
+     * placeholder itself; a row cached by 1.0 has no size until imagery:warm
+     * regenerates it.
+     *
+     * @param mixed $input
+     * @return array{width:int,height:int}|null
+     */
+    public function dimensions($input, array $overrides = []): ?array
+    {
+        $result = $this->result($input, $overrides);
+        if ($result === null || !$result->width() || !$result->height()) {
+            return null;
+        }
+
+        return ['width' => $result->width(), 'height' => $result->height()];
     }
 
     /**
@@ -201,7 +232,10 @@ class Imagery
             $key = $this->cacheKey($source->key(), $options);
             $row = $this->store->find($key);
 
-            if (!$force && $row !== null && $row->identity === $source->identity() && $row->isOk()) {
+            // isComplete(), not isOk(): a row from 1.0 lacks the image size, so
+            // warming after an upgrade fills it in - and regenerates transparent
+            // images, which lqip 0.2 had painted onto black.
+            if (!$force && $row !== null && $row->identity === $source->identity() && $row->isComplete()) {
                 return 'cached';
             }
 

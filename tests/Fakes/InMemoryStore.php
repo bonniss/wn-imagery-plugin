@@ -25,7 +25,11 @@ final class InMemoryStore implements PlaceholderStore
             $result->kind(),
             $result->value(),
             $result->cssProperty(),
-            $identity
+            $identity,
+            0,
+            null,
+            $result->width(),
+            $result->height()
         );
         $this->sources[$cacheKey] = $sourceKey;
     }

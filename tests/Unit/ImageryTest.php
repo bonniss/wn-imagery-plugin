@@ -211,6 +211,50 @@ class ImageryTest extends TestCase
     }
 
     /**
+     * The size is cached with the placeholder: asking again reads no file.
+     */
+    public function testDimensionsComeFromTheCache(): void
+    {
+        $this->media->put('/wide.png', self::png(0x336699, 40, 30));
+
+        $this->assertSame(['width' => 40, 'height' => 30], $this->imagery()->dimensions('/wide.png'));
+        $reads = $this->media->reads;
+
+        $this->assertSame(['width' => 40, 'height' => 30], $this->imagery()->dimensions('/wide.png'));
+        $this->assertSame($reads, $this->media->reads);
+        $this->assertNull($this->imagery()->dimensions('/missing.png'));
+    }
+
+    public function testStyleReservesTheShapeOnlyWhenAsked(): void
+    {
+        $this->media->put('/wide.png', self::png(0x336699, 40, 30));
+
+        $this->assertStringNotContainsString('aspect-ratio', $this->imagery()->style('/wide.png'));
+        $this->assertStringEndsWith(';aspect-ratio:40/30', $this->imagery()->style('/wide.png', ['aspect_ratio' => true]));
+        $this->assertCount(1, $this->store->rows, 'a presentation flag, not part of the cache key');
+    }
+
+    /**
+     * A row written by 1.0 has no size. It is still served, but warming
+     * regenerates it - which also repaints transparent images that lqip 0.2
+     * had put on black.
+     */
+    public function testWarmCompletesRowsWrittenBy10(): void
+    {
+        $this->imagery()->warm('/a.png');
+        $key = array_keys($this->store->rows)[0];
+        $row = $this->store->rows[$key];
+        $this->store->rows[$key] = new CachedPlaceholder($row->status, $row->kind, $row->value, $row->property, $row->identity);
+
+        $this->assertSame('linear-gradient(#336699,#336699)', $this->imagery([], ['lazy' => false])->css('/a.png'), 'still served');
+        $this->assertNull($this->imagery()->dimensions('/a.png'));
+
+        $this->assertSame('generated', $this->imagery()->warm('/a.png'));
+        $this->assertSame(['width' => 8, 'height' => 8], $this->imagery()->dimensions('/a.png'));
+        $this->assertSame('cached', $this->imagery()->warm('/a.png'));
+    }
+
+    /**
      * Changing a setting must take effect on the next render without a purge,
      * and the keys the purge command keeps must be exactly the live ones.
      */
@@ -257,10 +301,10 @@ class ImageryTest extends TestCase
         return array_values($this->store->rows)[0];
     }
 
-    private static function png(int $rgb): string
+    private static function png(int $rgb, int $w = 8, int $h = 8): string
     {
-        $image = imagecreatetruecolor(8, 8);
-        imagefilledrectangle($image, 0, 0, 7, 7, $rgb);
+        $image = imagecreatetruecolor($w, $h);
+        imagefilledrectangle($image, 0, 0, $w - 1, $h - 1, $rgb);
 
         ob_start();
         imagepng($image);

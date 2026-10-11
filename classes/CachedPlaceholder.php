@@ -32,6 +32,12 @@ final class CachedPlaceholder
     /** @var DateTimeInterface|null When a failed row may be retried; null means never. */
     public $retryAt;
 
+    /** @var int|null The image's displayed size; null on a row written by 1.0. */
+    public $width;
+
+    /** @var int|null */
+    public $height;
+
     public function __construct(
         string $status,
         ?string $kind,
@@ -39,7 +45,9 @@ final class CachedPlaceholder
         ?string $property,
         string $identity,
         int $attempts = 0,
-        ?DateTimeInterface $retryAt = null
+        ?DateTimeInterface $retryAt = null,
+        ?int $width = null,
+        ?int $height = null
     ) {
         $this->status = $status;
         $this->kind = $kind;
@@ -48,11 +56,22 @@ final class CachedPlaceholder
         $this->identity = $identity;
         $this->attempts = $attempts;
         $this->retryAt = $retryAt;
+        $this->width = $width;
+        $this->height = $height;
     }
 
     public function isOk(): bool
     {
         return $this->status === self::STATUS_OK && $this->value !== null;
+    }
+
+    /**
+     * An ok row with everything this version stores. A 1.0 row is still served
+     * as it is, but imagery:warm regenerates it to fill in the size.
+     */
+    public function isComplete(): bool
+    {
+        return $this->isOk() && $this->width !== null && $this->height !== null;
     }
 
     /**
@@ -66,12 +85,14 @@ final class CachedPlaceholder
         }
 
         if ($this->kind === LqipResult::KIND_CSS_VAR) {
-            return LqipResult::cssVar($this->value, (string) $this->property);
+            $result = LqipResult::cssVar($this->value, (string) $this->property);
+        } elseif ($this->kind === LqipResult::KIND_HASH) {
+            $result = LqipResult::hash($this->value);
+        } else {
+            $result = LqipResult::css($this->value);
         }
 
-        return $this->kind === LqipResult::KIND_HASH
-            ? LqipResult::hash($this->value)
-            : LqipResult::css($this->value);
+        return $this->width && $this->height ? $result->withDimensions($this->width, $this->height) : $result;
     }
 
     /** A failed row still inside its backoff window, or one that gave up for good. */

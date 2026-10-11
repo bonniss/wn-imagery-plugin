@@ -13,6 +13,8 @@ use Winter\Storm\Database\Model;
  * @property string|null $kind LqipResult::KIND_*.
  * @property string|null $value
  * @property string|null $property
+ * @property int|null $width The image's displayed width; null on rows written by 1.0.
+ * @property int|null $height
  * @property int $attempts
  * @property \Carbon\Carbon|null $retry_at
  */
@@ -26,5 +28,7 @@ class Placeholder extends Model
 
     protected $casts = [
         'attempts' => 'integer',
+        'width' => 'integer',
+        'height' => 'integer',
     ];
 }

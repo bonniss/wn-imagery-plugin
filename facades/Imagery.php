@@ -9,6 +9,7 @@ use Winter\Storm\Support\Facade;
  * @method static string css(mixed $image, array $options = [])
  * @method static string style(mixed $image, array $options = [])
  * @method static \Bonniss26\Lqip\LqipResult|null result(mixed $image, array $options = [])
+ * @method static array|null dimensions(mixed $image, array $options = [])
  * @method static string warm(mixed $image, array $options = [], bool $force = false, bool $isKey = false)
  *
  * @see \Bonniss26\Imagery\Classes\Imagery

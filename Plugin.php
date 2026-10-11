@@ -69,6 +69,10 @@ class Plugin extends PluginBase
                 'lqipStyle' => function ($image, array $options = []) {
                     return App::make(Imagery::class)->style($image, $options);
                 },
+                // {{ (photo|lqipSize).width }} - the displayed size, or null.
+                'lqipSize' => function ($image, array $options = []) {
+                    return App::make(Imagery::class)->dimensions($image, $options);
+                },
             ],
         ];
     }

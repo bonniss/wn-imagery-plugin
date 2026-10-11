@@ -34,7 +34,9 @@ class DatabaseStore implements PlaceholderStore
             $row->property,
             (string) $row->identity,
             (int) $row->attempts,
-            $row->retry_at
+            $row->retry_at,
+            $row->width,
+            $row->height
         );
     }
 
@@ -48,6 +50,8 @@ class DatabaseStore implements PlaceholderStore
             'kind' => $result->kind(),
             'value' => $result->value(),
             'property' => $result->cssProperty(),
+            'width' => $result->width(),
+            'height' => $result->height(),
             'attempts' => 0,
             'retry_at' => null,
         ]);
@@ -63,6 +67,8 @@ class DatabaseStore implements PlaceholderStore
             'kind' => null,
             'value' => null,
             'property' => null,
+            'width' => null,
+            'height' => null,
             'attempts' => $attempts,
             'retry_at' => $retryAt,
         ]);

@@ -1,3 +1,6 @@
 1.0.0:
     - 'First version: cached LQIP placeholders, Twig filters, settings, console commands.'
     - create_placeholders_table.php
+1.1.0:
+    - 'Cache the image size beside the placeholder; generate on upload; lqip 0.3 (transparency, smooth, thumbhash).'
+    - add_dimensions_to_placeholders.php
