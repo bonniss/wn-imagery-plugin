@@ -59,4 +59,44 @@ class CacheKeyTest extends TestCase
     {
         $this->assertMatchesRegularExpression('/^[0-9a-f]{40}$/', CacheKey::make('x', [], null));
     }
+
+    /**
+     * Pinned to the exact keys 1.0 wrote. Options added since are left out at
+     * their defaults; otherwise upgrading would miss every cached placeholder
+     * at once.
+     */
+    public function testKeysWrittenBy10StayValid(): void
+    {
+        $dominant = ['mode' => 'dominant_color'] + Defaults::generation();
+        $blur = ['mode' => 'blur'] + Defaults::generation();
+
+        $this->assertSame(
+            sha1("media:/a.jpg\n" . json_encode(['mode' => 'dominant_color'])),
+            CacheKey::make('media:/a.jpg', $dominant, null)
+        );
+        $this->assertSame(
+            sha1("media:/a.jpg\n" . json_encode(['blur' => true, 'format' => 'webp', 'long_edge' => 16, 'mode' => 'blur', 'quality' => 25])),
+            CacheKey::make('media:/a.jpg', $blur, 'webp')
+        );
+    }
+
+    public function testNewOptionsSplitTheCacheOnceSet(): void
+    {
+        $dominant = ['mode' => 'dominant_color'] + Defaults::generation();
+        $blur = ['mode' => 'blur'] + Defaults::generation();
+
+        $this->assertNotSame(
+            CacheKey::make('media:/a.png', $dominant, null),
+            CacheKey::make('media:/a.png', ['background' => '#ffffff'] + $dominant, null)
+        );
+        $this->assertNotSame(
+            CacheKey::make('media:/a.jpg', $blur, 'webp'),
+            CacheKey::make('media:/a.jpg', ['smooth' => true] + $blur, 'webp')
+        );
+        $this->assertSame(
+            CacheKey::make('media:/a.jpg', $dominant, null),
+            CacheKey::make('media:/a.jpg', ['smooth' => true] + $dominant, null),
+            'smooth means nothing outside blur'
+        );
+    }
 }

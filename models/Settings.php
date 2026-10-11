@@ -82,6 +82,14 @@ class Settings extends Model
         ];
     }
 
+    public function getSmoothOptions(): array
+    {
+        return $this->inheritOption('smooth') + [
+            '1' => Lang::get('bonniss26.imagery::lang.settings.yes'),
+            '0' => Lang::get('bonniss26.imagery::lang.settings.no'),
+        ];
+    }
+
     /**
      * The blank choice, labelled with what it currently resolves to, so an
      * editor can see the effective value without leaving the form.

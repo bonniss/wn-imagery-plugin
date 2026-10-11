@@ -110,12 +110,22 @@ class Imagery
 
     /**
      * A whole declaration for a `style` attribute, or "" - the `lqipStyle`
-     * filter. Works for every mode, including css_only's custom property.
+     * filter. Works for every mode that has a CSS form, including css_only's
+     * custom property; a hash mode (thumbhash) falls back as css() does.
      *
      * @param mixed $input
      */
     public function style($input, array $overrides = []): string
     {
+        $options = $this->resolveOptions($overrides);
+        if ($options === null) {
+            return '';
+        }
+
+        if (!Defaults::isStyleMode((string) $options['mode'])) {
+            $overrides['mode'] = Defaults::FALLBACK_CSS_MODE;
+        }
+
         $result = $this->result($input, $overrides);
 
         return $result ? $result->toStyleAttribute() : '';

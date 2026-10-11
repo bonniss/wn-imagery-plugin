@@ -8,6 +8,7 @@ use Bonniss26\Imagery\Classes\RetryPolicy;
 use Bonniss26\Imagery\Classes\SourceResolver;
 use Bonniss26\Imagery\Tests\Fakes\FakeMediaStorage;
 use Bonniss26\Imagery\Tests\Fakes\InMemoryStore;
+use Bonniss26\Lqip\LqipResult;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -48,7 +49,41 @@ class ImageryTest extends TestCase
 
     public function testStyleGivesAWholeDeclaration(): void
     {
-        $this->assertSame('background-image:linear-gradient(#336699,#336699)', $this->imagery()->style('/a.png'));
+        $this->assertSame(
+            'background-image:linear-gradient(#336699,#336699);background-size:cover',
+            $this->imagery()->style('/a.png')
+        );
+    }
+
+    /**
+     * A hash is not CSS at all, so both filters fall back; the hash itself is
+     * what result() is for, e.g. in an API.
+     */
+    public function testThumbhashFallsBackForBothFiltersAndIsCachedAsAHash(): void
+    {
+        $imagery = $this->imagery(['mode' => 'thumbhash']);
+
+        $this->assertSame('linear-gradient(#336699,#336699)', $imagery->css('/a.png'));
+        $this->assertStringStartsWith('background-image:linear-gradient(#336699,#336699)', $imagery->style('/a.png'));
+
+        $result = $imagery->result('/a.png');
+        $this->assertSame(LqipResult::KIND_HASH, $result->kind());
+
+        $cached = $this->imagery(['mode' => 'thumbhash'])->result('/a.png');
+        $this->assertSame(LqipResult::KIND_HASH, $cached->kind(), 'read back from the cache with its kind');
+        $this->assertSame($result->value(), $cached->value());
+    }
+
+    public function testBackgroundReachesTheLibrary(): void
+    {
+        $this->media->put('/logo.png', self::transparentHalfPng(0xFF0000));
+
+        $this->assertSame('linear-gradient(#ff000080,#ff000080)', $this->imagery()->css('/logo.png'));
+        $this->assertSame(
+            'linear-gradient(#ff0000,#ff0000)',
+            $this->imagery(['background' => 'FFF'])->css('/logo.png'),
+            'flattened onto white: half red, half white, the tie goes left'
+        );
     }
 
     /**
@@ -226,6 +261,21 @@ class ImageryTest extends TestCase
     {
         $image = imagecreatetruecolor(8, 8);
         imagefilledrectangle($image, 0, 0, 7, 7, $rgb);
+
+        ob_start();
+        imagepng($image);
+
+        return ob_get_clean();
+    }
+
+    /** Left half opaque $rgb, right half transparent: a stand-in for a logo. */
+    private static function transparentHalfPng(int $rgb): string
+    {
+        $image = imagecreatetruecolor(16, 16);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+        imagefilledrectangle($image, 0, 0, 7, 15, $rgb);
+        imagefilledrectangle($image, 8, 0, 15, 15, imagecolorallocatealpha($image, 0, 0, 0xFF, 127));
 
         ob_start();
         imagepng($image);

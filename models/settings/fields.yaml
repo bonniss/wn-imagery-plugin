@@ -39,3 +39,14 @@ fields:
         min: 0
         max: 100
         span: right
+    smooth:
+        label: bonniss26.imagery::lang.settings.smooth.label
+        comment: bonniss26.imagery::lang.settings.smooth.comment
+        type: dropdown
+        span: left
+    background:
+        label: bonniss26.imagery::lang.settings.background.label
+        comment: bonniss26.imagery::lang.settings.background.comment
+        type: text
+        placeholder: '#ffffff'
+        span: right

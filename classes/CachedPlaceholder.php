@@ -65,8 +65,12 @@ final class CachedPlaceholder
             return null;
         }
 
-        return $this->kind === LqipResult::KIND_CSS_VAR
-            ? LqipResult::cssVar($this->value, (string) $this->property)
+        if ($this->kind === LqipResult::KIND_CSS_VAR) {
+            return LqipResult::cssVar($this->value, (string) $this->property);
+        }
+
+        return $this->kind === LqipResult::KIND_HASH
+            ? LqipResult::hash($this->value)
             : LqipResult::css($this->value);
     }
 

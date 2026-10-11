@@ -90,10 +90,25 @@ final class OptionResolver
                 return is_numeric($value) ? (int) $value : null;
 
             case 'blur':
+            case 'smooth':
                 // Settings dropdowns store "1"/"0"; config files use real booleans.
                 $bool = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
 
                 return $bool;
+
+            case 'background':
+                // Normalised to #rrggbb, so '#FFF', 'fff' and '#ffffff' share a
+                // cache key. Anything else is dropped: the library would turn an
+                // invalid colour into no placeholder at all.
+                if (!is_string($value) || !preg_match('/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i', trim($value), $match)) {
+                    return null;
+                }
+                $hex = strtolower($match[1]);
+                if (strlen($hex) === 3) {
+                    $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+                }
+
+                return '#' . $hex;
 
             default:
                 return $value;

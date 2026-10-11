@@ -24,13 +24,20 @@ return [
     | that library's own defaults, so this array only needs to hold what you
     | actually want to differ.
     |
-    | mode:      dominant_color | gradient | blur | css_only
-    | long_edge: longest edge in px of the miniature (blur only), capped at 64
-    | quality:   lossy encode quality 0-100 (blur only)
-    | blur:      bake a Gaussian blur into the pixels (blur only)
-    | format:    webp | jpg (blur only). Without WebP, jpg costs ~9x more.
-    | driver:    auto | gd | imagick. auto takes Imagick when it is installed,
-    |            which decodes large JPEGs at reduced size and is much faster.
+    | mode:       dominant_color | gradient | blur | css_only | thumbhash
+    |             (thumbhash is not CSS: the filters fall back to dominant_color,
+    |             and Imagery::result() gives the hash for an API)
+    | long_edge:  longest edge in px of the miniature (blur only), capped at 64
+    | quality:    lossy encode quality 0-100 (blur only)
+    | blur:       bake a Gaussian blur into the pixels (blur only)
+    | smooth:     blur again at display size with an SVG filter (blur only).
+    |             No visible blocks, at ~4x the size.
+    | format:     webp | jpg (blur only). Without WebP, jpg costs ~9x more.
+    | driver:     auto | gd | imagick. auto takes Imagick when it is installed,
+    |             which decodes large JPEGs at reduced size and is much faster.
+    | background: null keeps transparency (a logo gets a placeholder in its own
+    |             colour and shape), or a colour like '#ffffff' to put
+    |             transparent images on first.
     |
     */
 
@@ -39,8 +46,10 @@ return [
         // 'long_edge' => 16,
         // 'quality' => 25,
         // 'blur' => true,
+        // 'smooth' => false,
         // 'format' => 'webp',
         // 'driver' => 'auto',
+        // 'background' => null,
     ],
 
     /*

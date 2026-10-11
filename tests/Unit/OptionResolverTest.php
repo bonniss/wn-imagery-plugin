@@ -87,4 +87,27 @@ class OptionResolverTest extends TestCase
 
         $this->assertSame(Defaults::GENERATION_KEYS, array_keys($options));
     }
+
+    public function testSmoothIsABooleanLikeBlur(): void
+    {
+        $this->assertTrue((new OptionResolver(['smooth' => '1'], []))->resolve()['smooth']);
+        $this->assertFalse((new OptionResolver([], []))->resolve()['smooth'], 'off by default');
+    }
+
+    /**
+     * Normalised, so the spellings of one colour share a cache key; dropped
+     * when not a colour, because the library would answer an invalid one with
+     * no placeholder at all.
+     */
+    public function testBackgroundIsNormalisedOrDropped(): void
+    {
+        foreach (['#FFF', 'fff', '#ffffff', ' FFFFFF '] as $spelling) {
+            $this->assertSame('#ffffff', (new OptionResolver(['background' => $spelling], []))->resolve()['background'], $spelling);
+        }
+
+        $options = (new OptionResolver(['background' => 'white'], ['background' => '#000']))->resolve();
+        $this->assertSame('#000000', $options['background'], 'an invalid setting falls through to the config');
+
+        $this->assertNull((new OptionResolver([], []))->resolve()['background'], 'transparency kept by default');
+    }
 }

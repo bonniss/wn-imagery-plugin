@@ -13,6 +13,7 @@ return [
         'gradient' => 'Gradient - four colours, no image data',
         'blur' => 'Blurred miniature - most realistic, most bytes',
         'css_only' => 'CSS only (experimental) - needs a decode stylesheet',
+        'thumbhash' => 'ThumbHash - a hash for APIs and apps that decode it, not CSS',
     ],
     'drivers' => [
         'auto' => 'Automatic (Imagick if installed, otherwise GD)',
@@ -48,6 +49,14 @@ return [
         'quality' => [
             'label' => 'Encode quality (blur only)',
             'comment' => '0-100. After blurring there is little detail left to spend it on; raising it mostly adds bytes.',
+        ],
+        'smooth' => [
+            'label' => 'Smooth when enlarged (blur only)',
+            'comment' => 'Blurs once more at display size, removing the soft blocks. About 4x the size (~530 characters instead of ~130).',
+        ],
+        'background' => [
+            'label' => 'Background for transparent images',
+            'comment' => 'Leave blank to keep transparency: a logo gets a placeholder in its own colour and shape. Enter the page colour (e.g. #ffffff) to put images on it first.',
         ],
     ],
 ];

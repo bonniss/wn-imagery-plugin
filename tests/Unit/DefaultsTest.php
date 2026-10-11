@@ -42,14 +42,16 @@ class DefaultsTest extends TestCase
 
     public function testOnlyBlurTreatsTheNumericOptionsAsSignificant(): void
     {
-        $this->assertSame(['mode'], Defaults::significantKeys('dominant_color'));
-        $this->assertSame(['mode'], Defaults::significantKeys('gradient'));
-        $this->assertSame(['mode'], Defaults::significantKeys('css_only'));
+        // background changes any mode's output for an image with transparency.
+        $this->assertSame(['mode', 'background'], Defaults::significantKeys('dominant_color'));
+        $this->assertSame(['mode', 'background'], Defaults::significantKeys('gradient'));
+        $this->assertSame(['mode', 'background'], Defaults::significantKeys('css_only'));
+        $this->assertSame(['mode', 'background'], Defaults::significantKeys('thumbhash'));
 
         $this->assertSame(
-            ['mode', 'long_edge', 'quality', 'blur', 'format'],
+            ['mode', 'long_edge', 'quality', 'blur', 'format', 'smooth', 'background'],
             Defaults::significantKeys('blur'),
-            'blur is the only mode the numeric knobs reach'
+            'blur is the only mode the numeric knobs and smooth reach'
         );
     }
 

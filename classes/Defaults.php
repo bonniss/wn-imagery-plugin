@@ -25,7 +25,7 @@ final class Defaults
      * plugin-level behaviour and must never leak into a generation call or a
      * cache key.
      */
-    const GENERATION_KEYS = ['mode', 'long_edge', 'quality', 'blur', 'format', 'driver'];
+    const GENERATION_KEYS = ['mode', 'long_edge', 'quality', 'blur', 'format', 'driver', 'smooth', 'background'];
 
     /**
      * Which options actually change the output, per mode.
@@ -41,19 +41,29 @@ final class Defaults
      * differ by engine is whether WebP is available; CacheKey keys on the format
      * actually produced instead.
      *
+     * `background` is in all of them: it changes the output of any mode for an
+     * image with transparency.
+     *
      * A mode registered through PlaceholderGenerator::extend() is unknown here
      * and falls back to every key - the safe direction, since over-keying only
      * costs cache entries while under-keying serves wrong values.
      */
     const SIGNIFICANT_KEYS = [
-        'dominant_color' => ['mode'],
-        'gradient' => ['mode'],
-        'css_only' => ['mode'],
-        'blur' => ['mode', 'long_edge', 'quality', 'blur', 'format'],
+        'dominant_color' => ['mode', 'background'],
+        'gradient' => ['mode', 'background'],
+        'css_only' => ['mode', 'background'],
+        'thumbhash' => ['mode', 'background'],
+        'blur' => ['mode', 'long_edge', 'quality', 'blur', 'format', 'smooth', 'background'],
     ];
 
     /** Modes whose value can be dropped into a CSS `background-image` list. */
     const CSS_MODES = ['dominant_color', 'gradient', 'blur'];
+
+    /**
+     * Modes that produce no CSS at all - a hash for a client-side decoder - so
+     * not even the `lqipStyle` filter can render them, and it falls back too.
+     */
+    const HASH_MODES = ['thumbhash'];
 
     /** Used when a configured mode cannot produce a CSS value. Cheap and always valid. */
     const FALLBACK_CSS_MODE = 'dominant_color';
@@ -91,6 +101,12 @@ final class Defaults
     public static function isCssMode(string $mode): bool
     {
         return in_array($mode, self::CSS_MODES, true);
+    }
+
+    /** Whether the `lqipStyle` filter can render this mode: anything but a hash. */
+    public static function isStyleMode(string $mode): bool
+    {
+        return !in_array($mode, self::HASH_MODES, true);
     }
 
     /**
