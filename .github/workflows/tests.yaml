@@ -1,0 +1,40 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Winter 1.2's own range.
+        php: ['8.0', '8.1', '8.2', '8.3', '8.4']
+
+    name: PHP ${{ matrix.php }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # composer.json resolves bonniss26/lqip from a sibling checkout at ../lqip
+      # (a path repository, read only when this is the root package), so put
+      # the core where it expects it.
+      - name: Check out the core library
+        run: git clone --depth 1 https://github.com/bonniss/lqip.git ../lqip
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: gd
+          coverage: none
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Run the standalone suite
+        run: vendor/bin/phpunit --testsuite=Unit
