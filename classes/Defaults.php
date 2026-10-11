@@ -25,7 +25,7 @@ final class Defaults
      * plugin-level behaviour and must never leak into a generation call or a
      * cache key.
      */
-    const GENERATION_KEYS = ['mode', 'long_edge', 'quality', 'blur', 'format'];
+    const GENERATION_KEYS = ['mode', 'long_edge', 'quality', 'blur', 'format', 'driver'];
 
     /**
      * Which options actually change the output, per mode.
@@ -34,6 +34,12 @@ final class Defaults
      * quality are inert. Including them in a cache key regardless would split
      * the cache into entries that are byte-identical, so an admin nudging
      * quality would needlessly discard every dominant_color placeholder too.
+     *
+     * `driver` is in none of them. GD and Imagick resample slightly differently,
+     * but both values are equally valid placeholders for the same image, so
+     * switching engine for speed should not throw the cache away. What *does*
+     * differ by engine is whether WebP is available; CacheKey keys on the format
+     * actually produced instead.
      *
      * A mode registered through PlaceholderGenerator::extend() is unknown here
      * and falls back to every key - the safe direction, since over-keying only
@@ -51,6 +57,9 @@ final class Defaults
 
     /** Used when a configured mode cannot produce a CSS value. Cheap and always valid. */
     const FALLBACK_CSS_MODE = 'dominant_color';
+
+    /** Accepted values for the `driver` option. */
+    const DRIVERS = ['auto', 'gd', 'imagick'];
 
     /**
      * The library's own defaults, narrowed to the keys we pass through.
@@ -93,10 +102,7 @@ final class Defaults
      */
     public static function modes(): array
     {
-        $builtIn = array_keys(self::SIGNIFICANT_KEYS);
-        $extended = array_keys(self::registeredStrategies());
-
-        return array_values(array_unique(array_merge($builtIn, $extended)));
+        return PlaceholderGenerator::modes();
     }
 
     /** @return string[] */
@@ -106,35 +112,14 @@ final class Defaults
     }
 
     /**
-     * Whether GD can actually encode WebP.
+     * Driver choices that would actually work in this process: `auto`, plus
+     * each engine that is loaded. Offering one that is not installed would let
+     * an editor pick a setting that silently turns every placeholder off.
      *
-     * Part of the cache key for the blur mode, not merely a capability probe:
-     * without WebP the library silently produces JPEG at roughly nine times the
-     * size. Two application servers sharing one database, one of them built
-     * without WebP, would otherwise agree on a cache key while disagreeing
-     * about what it holds.
+     * @return string[]
      */
-    public static function hasWebp(): bool
+    public static function drivers(): array
     {
-        return function_exists('imagewebp');
-    }
-
-    /**
-     * @return array<string,mixed>
-     */
-    private static function registeredStrategies(): array
-    {
-        // Reflection rather than a public accessor: the library exposes
-        // extend() but nothing to read the registry back. Failing soft here
-        // just means custom modes are absent from the dropdown, which is far
-        // better than a settings page that cannot render.
-        try {
-            $property = new \ReflectionProperty(PlaceholderGenerator::class, 'customStrategies');
-            $property->setAccessible(true);
-
-            return (array) $property->getValue();
-        } catch (\Throwable $e) {
-            return [];
-        }
+        return array_merge(['auto'], PlaceholderGenerator::availableDrivers());
     }
 }

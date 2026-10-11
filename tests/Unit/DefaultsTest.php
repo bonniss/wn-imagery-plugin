@@ -1,6 +1,8 @@
 <?php namespace Bonniss26\Imagery\Tests\Unit;
 
 use Bonniss26\Imagery\Classes\Defaults;
+use Bonniss26\Lqip\Drivers\Driver;
+use Bonniss26\Lqip\Drivers\Image;
 use Bonniss26\Lqip\PlaceholderGenerator;
 use Bonniss26\Lqip\Strategies\LqipStrategy;
 use Bonniss26\Lqip\LqipResult;
@@ -45,10 +47,30 @@ class DefaultsTest extends TestCase
         $this->assertSame(['mode'], Defaults::significantKeys('css_only'));
 
         $this->assertSame(
-            Defaults::GENERATION_KEYS,
+            ['mode', 'long_edge', 'quality', 'blur', 'format'],
             Defaults::significantKeys('blur'),
             'blur is the only mode the numeric knobs reach'
         );
+    }
+
+    /**
+     * GD and Imagick give equally valid placeholders for one image, so choosing
+     * an engine for speed must not discard the cache. The encode format that
+     * really differs by engine is keyed separately, by CacheKey.
+     */
+    public function testTheDriverIsNeverSignificant(): void
+    {
+        foreach (['dominant_color', 'gradient', 'css_only', 'blur'] as $mode) {
+            $this->assertNotContains('driver', Defaults::significantKeys($mode), $mode);
+        }
+    }
+
+    public function testDriverChoicesAreOnlyThoseInstalledHere(): void
+    {
+        $drivers = Defaults::drivers();
+
+        $this->assertSame('auto', $drivers[0]);
+        $this->assertSame(PlaceholderGenerator::availableDrivers(), array_slice($drivers, 1));
     }
 
     /**
@@ -91,7 +113,7 @@ class DefaultsTest extends TestCase
         $mode = 'imagery_test_custom_mode';
 
         PlaceholderGenerator::extend($mode, new class implements LqipStrategy {
-            public function generate($source, int $origWidth, int $origHeight, array $options): ?LqipResult
+            public function generate(Image $image, Driver $driver, array $options): ?LqipResult
             {
                 return LqipResult::css('linear-gradient(#000,#000)');
             }

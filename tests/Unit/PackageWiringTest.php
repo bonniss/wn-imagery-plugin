@@ -31,15 +31,28 @@ class PackageWiringTest extends TestCase
         $this->assertTrue(defined(PlaceholderGenerator::class . '::MAX_LONG_EDGE'));
     }
 
-    public function testGdIsPresentWithTheFormatsTheDefaultsAssume(): void
+    public function testCoreLibraryHasTheApiThisPluginCallsBeyondGeneration(): void
     {
-        $this->assertTrue(extension_loaded('gd'), 'ext-gd is a hard requirement');
+        // The plugin lists modes and drivers for the settings form and asks the
+        // driver about WebP for its cache key. A core older than the driver
+        // abstraction has none of these.
+        $this->assertTrue(method_exists(PlaceholderGenerator::class, 'modes'));
+        $this->assertTrue(method_exists(PlaceholderGenerator::class, 'availableDrivers'));
+        $this->assertTrue(method_exists(PlaceholderGenerator::class, 'resolveDriver'));
+    }
+
+    public function testAnImageEngineIsPresentWithTheFormatsTheDefaultsAssume(): void
+    {
+        $this->assertNotEmpty(
+            PlaceholderGenerator::availableDrivers(),
+            'neither ext-gd nor ext-imagick is loaded; every placeholder would be empty'
+        );
 
         // Not a hard requirement, but without it the blur mode silently falls back
         // to JPEG at roughly 9x the size - so a suite that passes without WebP is
         // exercising a different code path than the defaults describe.
-        if (!function_exists('imagewebp')) {
-            $this->markTestIncomplete('GD lacks WebP support; blur-mode sizes will not match the documented defaults');
+        if (!PlaceholderGenerator::resolveDriver('auto')->supportsFormat('webp')) {
+            $this->markTestIncomplete('the image engine lacks WebP; blur-mode sizes will not match the documented defaults');
         }
 
         $this->assertTrue(true);

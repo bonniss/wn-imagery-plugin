@@ -1,7 +1,8 @@
 {
     "name": "bonniss26/wn-imagery-plugin",
     "type": "winter-plugin",
-    "description": "LQIP image placeholders for Winter CMS - Twig filters, database caching, settings, console commands and queued generation.",
+    "description": "LQIP image placeholders for Winter CMS - Twig filters, database caching, settings, console commands and queued generation, on GD or Imagick.",
+    "homepage": "https://github.com/bonniss/wn-imagery-plugin",
     "keywords": ["wintercms", "winter", "lqip", "placeholder", "images", "performance", "twig"],
     "license": "MIT",
     "authors": [
@@ -11,12 +12,11 @@
     ],
     "require": {
         "php": "^8.0.2",
-        "ext-gd": "*",
         "composer/installers": "~1.11 || ^2.0",
         "bonniss26/lqip": "^0.1"
     },
     "require-dev": {
-        "phpunit/phpunit": "^9.5 || ^10.0"
+        "phpunit/phpunit": "^9.6 || ^10.5"
     },
     "repositories": [
         {
