@@ -53,7 +53,19 @@ Imagick is about 3.5× faster on large JPEGs; either works.
 
 {# Override the mode (or any option) for one call #}
 <img src="{{ photo|media }}" style="{{ photo|lqipStyle({mode: 'blur'}) }}">
+
+{# Reserve the photo's space, so the page does not jump when it arrives #}
+{% set size = photo|lqipSize %}
+<img src="{{ photo|media }}" style="{{ photo|lqipStyle }}"
+     {% if size %}width="{{ size.width }}" height="{{ size.height }}"{% endif %}>
+
+{# ...or, for an element without fixed dimensions #}
+<div style="{{ photo|lqipStyle({aspect_ratio: true}) }}"></div>
 ```
+
+`|lqipSize` gives `{width, height}` from the cache, so it costs no file read.
+It is the size the photo is *displayed* at: portrait phone photos are often
+stored sideways with a flag to rotate them, and this accounts for that.
 
 `photo` can be any of these:
 
@@ -66,8 +78,9 @@ Imagick is about 3.5× faster on large JPEGs; either works.
 From PHP, use the `Imagery` facade:
 
 ```php
-Imagery::style($post->featured_image);  // "background-image:linear-gradient(#b5b2a5,#b5b2a5)" or ""
+Imagery::style($post->featured_image);  // "background-image:...;background-size:cover" or ""
 Imagery::css('photos/a.jpg');           // "linear-gradient(#b5b2a5,#b5b2a5)" or ""
+Imagery::dimensions('photos/a.jpg');    // ['width' => 1600, 'height' => 1067] or null
 Imagery::result($file);                 // Bonniss26\Lqip\LqipResult or null
 ```
 
@@ -79,16 +92,23 @@ Pick the mode in **Settings → Image placeholders**, or per call as above.
 |---|---|---|---|
 | `dominant_color` *(default)* | One flat colour | ~32 chars | Lightest; works everywhere |
 | `blur` | A blurred thumbnail | ~130 chars | Looks most like the photo. Recommended for most sites |
+| `blur` + *Smooth* | The same, without visible blocks | ~530 chars | The nicest look, if you can spare the bytes |
 | `gradient` | Four soft colour patches | ~256 chars | Servers whose GD/Imagick lacks WebP |
+| `thumbhash` | A hash your JS or app decodes | ~28 chars | APIs and headless front ends. Not CSS |
 | `css_only` | Colour plus coarse layout | ~13 chars | Experimental. Needs your own decode stylesheet |
 
 The [library's README](https://github.com/bonniss/lqip#choosing-a-mode)
 explains each mode in more detail.
 
-`|lqip` always returns a `background-image` value. If the mode is
-`css_only`, which produces a CSS variable instead, `|lqip` uses
-`dominant_color` so templates keep working. `|lqipStyle` renders every mode,
-including `css_only` (`--lqip:87524`).
+`|lqip` always returns a `background-image` value. If the mode is `css_only`
+(a CSS variable) or `thumbhash` (a hash), `|lqip` uses `dominant_color`
+instead, so an editor changing the mode cannot break a template. `|lqipStyle`
+renders `css_only` as `--lqip:87524`, and falls back for `thumbhash`. To get
+the hash itself, for an API: `Imagery::result($image, ['mode' => 'thumbhash'])->value()`.
+
+Logos and cut-out product shots keep their transparency: the placeholder
+takes the image's own colour and shape instead of a box. If you would rather
+put them on your page colour, set **Background for transparent images**.
 
 `blur` uses a `data:` URI. If your site sends a strict
 Content-Security-Policy, allow `img-src data:` or the placeholder will not
@@ -98,17 +118,16 @@ show.
 
 Generating a placeholder means decoding the original photo. That takes about
 20 ms per megapixel with GD, so a 24 MP photo costs half a second. The plugin
-therefore never generates without limits during a page render. When an image
-has no placeholder yet:
+therefore avoids doing it while a page renders.
 
-| Your setup | What happens |
-|---|---|
-| A real queue (`database`, `redis`, ...) | A background job generates it; it appears on a later page view |
-| Debug mode (`app.debug`), or `lazy` on | Generated during the render, at most 5 per request |
-| Otherwise | No placeholder for that image until it is warmed |
+**New uploads are handled for you.** When an image is uploaded through the
+Media Manager or attached to a record, its placeholder is made right away: in
+a background job if you have a real queue, otherwise during the upload, where
+the editor is already waiting. Renaming, moving or deleting a file in the Media
+Manager keeps the cache in step.
 
-So in production, **warm the cache** after deploying or importing images. You
-can also schedule it:
+**Images that were there before** - or anything added another way, such as
+FTP or a script - need one warm-up:
 
 ```bash
 php artisan imagery:warm            # Media Library images
@@ -116,7 +135,22 @@ php artisan imagery:warm --files    # ...and file attachments
 ```
 
 It skips images that are already done and unchanged, so it is safe to run as
-often as you like.
+often as you like, for example after each deploy or from the scheduler.
+
+If an image still has no placeholder when a page shows it:
+
+| Your setup | What happens |
+|---|---|
+| A real queue (`database`, `redis`, ...) | A background job generates it; it appears on a later page view |
+| Debug mode (`app.debug`), or `lazy` on | Generated during the render, at most 5 per request |
+| Otherwise | No placeholder for that image until it is warmed |
+
+### Upgrading from 1.0
+
+Run `php artisan winter:up`, then `php artisan imagery:warm` once. Existing
+placeholders keep working in the meantime. The warm-up adds the image sizes
+that `|lqipSize` needs, and redoes transparent images, which 1.0 placed on
+black.
 
 An image that fails, because it is corrupt or too large, is not retried on
 every page view. It is retried after 15 minutes, then 30, and so on up to a
@@ -125,8 +159,9 @@ week, at most 5 times. Replacing the file starts over.
 ## Settings
 
 **Settings → CMS → Image placeholders** sets the mode, the engine (GD or
-Imagick) and the `blur` options. Leave a field blank to use the
-configuration file's value; the blank option shows what that currently is.
+Imagick), the `blur` options including *Smooth*, and the background for
+transparent images. Leave a field blank to use the configuration file's
+value; the blank option shows what that currently is.
 
 Changes apply on the next page view. Nothing needs clearing, because the
 options are part of the cache key. Switching engine keeps existing
@@ -139,8 +174,9 @@ Override any key of [`config/config.php`](config/config.php) in your app at
 
 | Key | Default | What it does |
 |---|---|---|
-| `generation` | library defaults | Default options: `mode`, `driver`, `long_edge`, `quality`, ... |
+| `generation` | library defaults | Default options: `mode`, `driver`, `smooth`, `background`, `long_edge`, `quality`, ... |
 | `settings_override_config` | `true` | Set `false` to make this file win over the backend settings |
+| `generate_on_upload` | `true` | Make placeholders when images are uploaded, and follow renames and deletes |
 | `lazy` | `null` (follows `app.debug`) | Generate during page renders when no queue is set up |
 | `request_budget` | `5` | Most placeholders generated in one request |
 | `sources.allow_absolute_paths` | `false` | Accept raw filesystem paths, only inside `sources.allowed_roots` |
@@ -172,10 +208,11 @@ without booting Winter:
 
 | Class | Responsibility |
 |---|---|
-| `classes/Imagery` | The service behind the filters and facade: look up the cache, decide what to do on a miss, record failures |
+| `classes/Imagery` | The service behind the filters and facade: look up the cache, decide what to do on a miss, record failures, prepare uploads |
+| `classes/MediaEvents` | What an upload, rename, move or delete does to the cache. `Plugin.php` binds it to Winter's events |
 | `classes/OptionResolver` | Merges per-call overrides, settings, config and library defaults, in that order |
 | `classes/SourceResolver` | Turns whatever a template passes into a `Source`. Refuses path traversal, foreign URLs and paths outside `allowed_roots` |
-| `classes/CacheKey` | `sha1` of the source and the options that change the output. The driver is deliberately not one of them |
+| `classes/CacheKey` | `sha1` of the source and the options that change the output. The driver is deliberately not one of them, and options added after 1.0 are left out at their defaults so 1.0's keys stay valid |
 | `classes/RetryPolicy` | Exponential backoff for failed images |
 | `classes/RequestBudget` | The per-request cap on inline generation |
 | `classes/Defaults` | Option names, which ones change the output, available modes and drivers |
@@ -201,9 +238,9 @@ composer test
 
 The unit suite needs no Winter install. CI does the same: it clones the
 library next to the plugin and runs the suite on PHP 8.0 to 8.4. Behaviour
-inside Winter (filters, migrations, queue, commands) is checked by installing
-the plugin into a Winter 1.2 app. There is no automated integration suite
-yet.
+inside Winter (filters, migrations, queue, commands, upload events) is checked
+by installing the plugin into a Winter 1.2 app, including upgrading one that
+holds 1.0 data. There is no automated integration suite yet.
 
 ### Contributing
 
