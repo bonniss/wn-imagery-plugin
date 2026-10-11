@@ -28,7 +28,9 @@ return [
     | long_edge: longest edge in px of the miniature (blur only), capped at 64
     | quality:   lossy encode quality 0-100 (blur only)
     | blur:      bake a Gaussian blur into the pixels (blur only)
-    | format:    webp | jpg (blur only). Without WebP in GD, jpg costs ~9x more.
+    | format:    webp | jpg (blur only). Without WebP, jpg costs ~9x more.
+    | driver:    auto | gd | imagick. auto takes Imagick when it is installed,
+    |            which decodes large JPEGs at reduced size and is much faster.
     |
     */
 
@@ -38,6 +40,7 @@ return [
         // 'quality' => 25,
         // 'blur' => true,
         // 'format' => 'webp',
+        // 'driver' => 'auto',
     ],
 
     /*

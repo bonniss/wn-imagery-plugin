@@ -1,0 +1,41 @@
+# No `default:` anywhere, deliberately - see classes/Defaults.php. A blank value
+# means "inherit from the config file, then the library".
+#
+# The blur-only fields are always shown rather than toggled on `mode`: a
+# trigger cannot see an inherited mode, so it would hide them exactly when an
+# editor leaves mode blank on a site whose config says blur.
+fields:
+    mode:
+        label: bonniss26.imagery::lang.settings.mode.label
+        comment: bonniss26.imagery::lang.settings.mode.comment
+        type: dropdown
+        span: left
+    driver:
+        label: bonniss26.imagery::lang.settings.driver.label
+        comment: bonniss26.imagery::lang.settings.driver.comment
+        type: dropdown
+        span: right
+    format:
+        label: bonniss26.imagery::lang.settings.format.label
+        comment: bonniss26.imagery::lang.settings.format.comment
+        type: dropdown
+        span: left
+    blur:
+        label: bonniss26.imagery::lang.settings.blur.label
+        comment: bonniss26.imagery::lang.settings.blur.comment
+        type: dropdown
+        span: right
+    long_edge:
+        label: bonniss26.imagery::lang.settings.long_edge.label
+        comment: bonniss26.imagery::lang.settings.long_edge.comment
+        type: number
+        min: 1
+        max: 64
+        span: left
+    quality:
+        label: bonniss26.imagery::lang.settings.quality.label
+        comment: bonniss26.imagery::lang.settings.quality.comment
+        type: number
+        min: 0
+        max: 100
+        span: right
