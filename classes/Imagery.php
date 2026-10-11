@@ -255,20 +255,88 @@ class Imagery
      */
     public function currentKeysFor(string $sourceKey): array
     {
-        $options = $this->resolveOptions();
-        if ($options === null) {
-            return [];
-        }
-
-        $keys = [$this->cacheKey($sourceKey, $options)];
-        if (!Defaults::isCssMode((string) $options['mode'])) {
-            $fallback = $this->resolveOptions(['mode' => Defaults::FALLBACK_CSS_MODE]);
-            if ($fallback !== null) {
-                $keys[] = $this->cacheKey($sourceKey, $fallback);
+        $keys = [];
+        foreach ($this->variants() as $overrides) {
+            $options = $this->resolveOptions($overrides);
+            if ($options !== null) {
+                $keys[] = $this->cacheKey($sourceKey, $options);
             }
         }
 
         return $keys;
+    }
+
+    /**
+     * The overrides templates will look an image up with: none (the configured
+     * options), plus the CSS fallback when the configured mode has no CSS form.
+     * What warming and upload-time generation must produce.
+     *
+     * @return array[]
+     */
+    public function variants(): array
+    {
+        $options = $this->resolveOptions();
+        $variants = [[]];
+        if ($options !== null && !Defaults::isCssMode((string) $options['mode'])) {
+            $variants[] = ['mode' => Defaults::FALLBACK_CSS_MODE];
+        }
+
+        return $variants;
+    }
+
+    /**
+     * Gets an image ready right after it was uploaded or replaced: queued when
+     * a real queue exists, otherwise generated now. Upload time is when the
+     * cost is easiest to hide - the editor is already waiting - and without
+     * this a site with no queue and no `lazy` shows nothing for a new image
+     * until someone runs imagery:warm.
+     *
+     * @param mixed $input A template value, or a Source key with $isKey.
+     * @return string "queued", "generated", "cached", "failed", "missing" or "disabled".
+     */
+    public function prepare($input, bool $isKey = false): string
+    {
+        if (!$this->enabled) {
+            return 'disabled';
+        }
+
+        try {
+            $source = $isKey ? $this->sources->fromKey((string) $input) : $this->sources->resolve($input);
+            if ($source === null) {
+                return 'missing';
+            }
+
+            $outcome = 'cached';
+            foreach ($this->variants() as $overrides) {
+                if ($this->dispatch !== null) {
+                    $options = $this->resolveOptions($overrides);
+                    if ($options !== null) {
+                        ($this->dispatch)($source->key(), $options);
+                        $outcome = 'queued';
+                    }
+                    continue;
+                }
+
+                $result = $this->warm($source->key(), $overrides, false, true);
+                if ($result === 'failed' || $outcome === 'cached') {
+                    $outcome = $result;
+                }
+            }
+
+            return $outcome;
+        } catch (Throwable $e) {
+            return 'failed';
+        }
+    }
+
+    /** Drops every cached row for an image that was deleted or moved away. */
+    public function forget(string $sourceKey): void
+    {
+        try {
+            $this->store->forgetSource($sourceKey);
+        } catch (Throwable $e) {
+            // A leftover row is harmless; imagery:purge --orphaned removes it.
+        }
     }
 
     /** Whether a stored Source key still points at a readable image. */

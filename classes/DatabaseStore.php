@@ -74,6 +74,19 @@ class DatabaseStore implements PlaceholderStore
         ]);
     }
 
+    /**
+     * Unindexed on purpose - see the migration: it runs when an editor deletes
+     * or renames a file, not during a page render.
+     */
+    public function forgetSource(string $sourceKey): void
+    {
+        try {
+            Placeholder::where('source', $sourceKey)->delete();
+        } catch (Throwable $e) {
+            // See the class docblock; imagery:purge --orphaned is the backstop.
+        }
+    }
+
     private function save(string $cacheKey, array $attributes): void
     {
         try {

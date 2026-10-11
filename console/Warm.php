@@ -1,6 +1,5 @@
 <?php namespace Bonniss26\Imagery\Console;
 
-use Bonniss26\Imagery\Classes\Defaults;
 use Bonniss26\Imagery\Classes\Imagery;
 use Bonniss26\Imagery\Classes\WinterMediaStorage;
 use Illuminate\Console\Command;
@@ -29,7 +28,7 @@ class Warm extends Command
         $force = (bool) $this->option('force');
         $counts = ['generated' => 0, 'cached' => 0, 'failed' => 0, 'missing' => 0];
 
-        $variants = $this->variants($imagery);
+        $variants = $imagery->variants();
 
         foreach ($this->inputs() as $label => $input) {
             foreach ($variants as $overrides) {
@@ -58,24 +57,6 @@ class Warm extends Command
         ));
 
         return 0;
-    }
-
-    /**
-     * The configured mode, plus the CSS fallback when that mode cannot be used
-     * by the `lqip` filter - both are what templates will look up.
-     *
-     * @return array[]
-     */
-    private function variants(Imagery $imagery): array
-    {
-        $options = $imagery->resolveOptions() ?? [];
-        $variants = [[]];
-
-        if (!Defaults::isCssMode((string) ($options['mode'] ?? ''))) {
-            $variants[] = ['mode' => Defaults::FALLBACK_CSS_MODE];
-        }
-
-        return $variants;
     }
 
     /**

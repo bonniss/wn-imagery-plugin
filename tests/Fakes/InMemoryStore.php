@@ -47,4 +47,11 @@ final class InMemoryStore implements PlaceholderStore
         );
         $this->sources[$cacheKey] = $sourceKey;
     }
+
+    public function forgetSource(string $sourceKey): void
+    {
+        foreach (array_keys($this->sources, $sourceKey, true) as $cacheKey) {
+            unset($this->rows[$cacheKey], $this->sources[$cacheKey]);
+        }
+    }
 }

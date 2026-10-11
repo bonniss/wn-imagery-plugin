@@ -18,4 +18,7 @@ interface PlaceholderStore
     public function saveResult(string $cacheKey, string $sourceKey, string $identity, string $mode, LqipResult $result): void;
 
     public function saveFailure(string $cacheKey, string $sourceKey, string $identity, string $mode, int $attempts, ?DateTimeInterface $retryAt): void;
+
+    /** Removes every row for one image, whatever options it was generated with. */
+    public function forgetSource(string $sourceKey): void;
 }

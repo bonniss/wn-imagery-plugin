@@ -4,6 +4,7 @@ use App;
 use Backend\Models\UserRole;
 use Bonniss26\Imagery\Classes\DatabaseStore;
 use Bonniss26\Imagery\Classes\Imagery;
+use Bonniss26\Imagery\Classes\MediaEvents;
 use Bonniss26\Imagery\Classes\OptionResolver;
 use Bonniss26\Imagery\Classes\RequestBudget;
 use Bonniss26\Imagery\Classes\RetryPolicy;
@@ -12,8 +13,10 @@ use Bonniss26\Imagery\Classes\WinterMediaStorage;
 use Bonniss26\Imagery\Jobs\GeneratePlaceholder;
 use Bonniss26\Imagery\Models\Settings;
 use Config;
+use Event;
 use Illuminate\Foundation\AliasLoader;
 use Queue;
+use System\Classes\MediaLibrary;
 use System\Classes\PluginBase;
 use System\Models\File;
 
@@ -55,6 +58,44 @@ class Plugin extends PluginBase
         if (Config::get('bonniss26.imagery::register_alias', true)) {
             AliasLoader::getInstance()->alias('Imagery', Facades\Imagery::class);
         }
+
+        if (Config::get('bonniss26.imagery::generate_on_upload', true)) {
+            self::followMediaChanges();
+        }
+    }
+
+    /**
+     * Binds Classes\MediaEvents to the Media Manager's file events and to file
+     * attachments. MediaEvents is built lazily, inside each listener, so a
+     * request that touches no image never assembles the service.
+     */
+    private static function followMediaChanges(): void
+    {
+        $events = function (): MediaEvents {
+            return new MediaEvents(App::make(Imagery::class), MediaLibrary::instance()->getMediaPath(''));
+        };
+
+        Event::listen('media.file.upload', function ($widget, $path) use ($events) {
+            $events()->uploaded((string) $path);
+        });
+        Event::listen('media.file.rename', function ($widget, $from, $to) use ($events) {
+            $events()->renamed((string) $from, (string) $to);
+        });
+        Event::listen('media.file.move', function ($widget, $path, $folder) use ($events) {
+            $events()->moved((string) $path, (string) $folder);
+        });
+        Event::listen('media.file.delete', function ($widget, $path) use ($events) {
+            $events()->deleted((string) $path);
+        });
+
+        File::extend(function ($file) use ($events) {
+            $file->bindEvent('model.afterCreate', function () use ($file, $events) {
+                $events()->fileCreated($file);
+            });
+            $file->bindEvent('model.afterDelete', function () use ($file, $events) {
+                $events()->fileDeleted($file);
+            });
+        });
     }
 
     public function registerMarkupTags(): array

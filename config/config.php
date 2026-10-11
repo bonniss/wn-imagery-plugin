@@ -152,6 +152,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Follow uploads
+    |--------------------------------------------------------------------------
+    |
+    | Prepare a placeholder as soon as an image is uploaded through the Media
+    | Manager or attached as a file - queued if a real queue is configured,
+    | otherwise generated during the upload request, where the editor is
+    | already waiting. Renaming, moving or deleting a Media Library file keeps
+    | the cache in step. Without this, on a site with no queue and `lazy` off,
+    | a new image has no placeholder until imagery:warm runs.
+    |
+    */
+
+    'generate_on_upload' => true,
+
+    /*
+    |--------------------------------------------------------------------------
     | Register the Imagery alias
     |--------------------------------------------------------------------------
     |
