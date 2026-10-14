@@ -9,10 +9,11 @@ Add `|lqipStyle` to an image in a Twig template and it gets a low-quality
 image placeholder (LQIP): a flat colour, a gradient or a blurred preview,
 painted behind the image until the real photo arrives.
 
-![The four modes on four photos](https://raw.githubusercontent.com/bonniss/lqip/main/docs/images/modes.jpg)
+![Every mode on four photos and a transparent cut-out](https://raw.githubusercontent.com/bonniss/lqip/main/docs/images/modes.jpg)
 
-- **One filter.** It works with Media Library paths, `|media` URLs, file
-  attachments, or `null`.
+- **Three Twig filters**: `|lqip`, `|lqipStyle`, `|lqipSize`. They take
+  Media Library paths, `|media` URLs, file attachments, or `null`.
+- **Made on upload.** New images get their placeholder as they are uploaded.
 - **Cached in the database.** Each image is processed once, not on every
   page view.
 - **Never breaks a page.** A missing or broken image gives an empty string,
@@ -48,10 +49,13 @@ Imagick is about 3.5× faster on large JPEGs; either works.
 {# Most common: a placeholder behind an <img> #}
 <img src="{{ photo|media }}" style="{{ photo|lqipStyle }}" loading="lazy">
 
-{# Only the value, to combine with your own background-image #}
-<div style="background-image: url({{ photo|media }}), {{ photo|lqip }}"></div>
+{# Only the value, to layer under your own background-image.
+   Check it first: "url(...), " followed by nothing is invalid CSS,
+   and the browser would drop the photo too. #}
+{% set placeholder = photo|lqip %}
+<div style="background-image: url({{ photo|media }}){{ placeholder ? ', ' ~ placeholder }}; background-size: cover"></div>
 
-{# Override the mode (or any option) for one call #}
+{# Override an option for one call (but see "Going to production") #}
 <img src="{{ photo|media }}" style="{{ photo|lqipStyle({mode: 'blur'}) }}">
 
 {# Reserve the photo's space, so the page does not jump when it arrives #}
@@ -63,9 +67,15 @@ Imagick is about 3.5× faster on large JPEGs; either works.
 <div style="{{ photo|lqipStyle({aspect_ratio: true}) }}"></div>
 ```
 
-`|lqipSize` gives `{width, height}` from the cache, so it costs no file read.
-It is the size the photo is *displayed* at: portrait phone photos are often
-stored sideways with a flag to rotate them, and this accounts for that.
+`|lqipSize` gives `{width, height}`, stored beside the placeholder, so the
+image is not downloaded again to measure it. It is the size the photo is
+*displayed* at: portrait phone photos are often stored sideways with a flag
+to rotate them, and this accounts for that. It is `null` while the
+placeholder itself has not been made yet.
+
+Use `|lqipStyle` rather than building the `style` yourself where you can: it
+adds `background-size: cover`, without which the `blur` placeholder, a 16 px
+image, is tiled across the element instead of stretched over it.
 
 `photo` can be any of these:
 
@@ -80,13 +90,14 @@ From PHP, use the `Imagery` facade:
 ```php
 Imagery::style($post->featured_image);  // "background-image:...;background-size:cover" or ""
 Imagery::css('photos/a.jpg');           // "linear-gradient(#b5b2a5,#b5b2a5)" or ""
-Imagery::dimensions('photos/a.jpg');    // ['width' => 1600, 'height' => 1067] or null
+Imagery::dimensions('photos/a.jpg');    // ['width' => 800, 'height' => 533] or null
 Imagery::result($file);                 // Bonniss26\Lqip\LqipResult or null
 ```
 
 ## Choosing a mode
 
-Pick the mode in **Settings → Image placeholders**, or per call as above.
+Pick the mode in **Settings → CMS → Image placeholders**. You can also
+override it per call, as above.
 
 | Mode | Looks like | Size per image | Good for |
 |---|---|---|---|
@@ -94,7 +105,7 @@ Pick the mode in **Settings → Image placeholders**, or per call as above.
 | `blur` | A blurred thumbnail | ~130 chars | Looks most like the photo. Recommended for most sites |
 | `blur` + *Smooth* | The same, without visible blocks | ~530 chars | The nicest look, if you can spare the bytes |
 | `gradient` | Four soft colour patches | ~256 chars | Servers whose GD/Imagick lacks WebP |
-| `thumbhash` | A hash your JS or app decodes | ~28 chars | APIs and headless front ends. Not CSS |
+| `thumbhash` | A hash your JS or app decodes | ~28 chars (more with transparency) | APIs and headless front ends. Not CSS |
 | `css_only` | Colour plus coarse layout | ~13 chars | Experimental. Needs your own decode stylesheet |
 
 The [library's README](https://github.com/bonniss/lqip#choosing-a-mode)
@@ -103,8 +114,15 @@ explains each mode in more detail.
 `|lqip` always returns a `background-image` value. If the mode is `css_only`
 (a CSS variable) or `thumbhash` (a hash), `|lqip` uses `dominant_color`
 instead, so an editor changing the mode cannot break a template. `|lqipStyle`
-renders `css_only` as `--lqip:87524`, and falls back for `thumbhash`. To get
-the hash itself, for an API: `Imagery::result($image, ['mode' => 'thumbhash'])->value()`.
+renders `css_only` as `--lqip:87524`, and falls back for `thumbhash`.
+
+To serve the hash itself, for example from an API endpoint, set the mode to
+`thumbhash` in Settings (so uploads and `imagery:warm` produce it) and read it
+with:
+
+```php
+$hash = Imagery::result($image)?->value(); // null until it has been generated
+```
 
 Logos and cut-out product shots keep their transparency: the placeholder
 takes the image's own colour and shape instead of a box. If you would rather
@@ -130,8 +148,10 @@ Manager keeps the cache in step.
 FTP or a script - need one warm-up:
 
 ```bash
-php artisan imagery:warm            # Media Library images
-php artisan imagery:warm --files    # ...and file attachments
+php artisan imagery:warm             # Media Library images
+php artisan imagery:warm --files     # ...and file attachments
+php artisan imagery:warm --limit=200 # stop after 200 new placeholders
+php artisan imagery:warm --force     # redo everything, even what is cached
 ```
 
 It skips images that are already done and unchanged, so it is safe to run as
@@ -145,16 +165,31 @@ If an image still has no placeholder when a page shows it:
 | Debug mode (`app.debug`), or `lazy` on | Generated during the render, at most 5 per request |
 | Otherwise | No placeholder for that image until it is warmed |
 
+**What uploads and `imagery:warm` produce is what Settings say.** A different
+mode or option passed in a template (`|lqipStyle({mode: 'blur'})`) is only
+generated by a queue or by `lazy`. So on a production site without a queue,
+configure the look in Settings rather than per call, and run `imagery:warm`
+after changing Settings.
+
+### When an image fails
+
+An image that cannot be processed (corrupt, an unsupported format, over 60
+megapixels) is recorded, not retried on every page view: the next tries come
+after 15, 30, 60 and 120 minutes, and after the fifth failure it waits until
+you replace the file, run `imagery:purge --failed`, or run `imagery:warm`.
+The schedule is set by `cache.retry` in the config.
+
 ### Upgrading from 1.0
 
-Run `php artisan winter:up`, then `php artisan imagery:warm` once. Existing
-placeholders keep working in the meantime. The warm-up adds the image sizes
-that `|lqipSize` needs, and redoes transparent images, which 1.0 placed on
-black.
+```bash
+composer update bonniss26/wn-imagery-plugin   # also brings bonniss26/lqip 0.3
+php artisan winter:up
+php artisan imagery:warm
+```
 
-An image that fails, because it is corrupt or too large, is not retried on
-every page view. It is retried after 15 minutes, then 30, and so on up to a
-week, at most 5 times. Replacing the file starts over.
+Existing placeholders keep working in between. The warm-up adds the image
+sizes that `|lqipSize` needs, and redoes transparent images, which 1.0 placed
+on black.
 
 ## Settings
 
@@ -163,9 +198,14 @@ Imagick), the `blur` options including *Smooth*, and the background for
 transparent images. Leave a field blank to use the configuration file's
 value; the blank option shows what that currently is.
 
-Changes apply on the next page view. Nothing needs clearing, because the
-options are part of the cache key. Switching engine keeps existing
-placeholders, since both engines produce equivalent ones.
+Nothing needs clearing after a change, because the options are part of the
+cache key: pages pick up new placeholders as they are made - by the queue,
+by `lazy`, or by running `imagery:warm`. Switching engine keeps existing
+placeholders, since both engines produce equivalent ones (except `blur` when
+the new engine cannot write WebP).
+
+Who may open the page is the `bonniss26.imagery.manage_settings` permission,
+given to the Developer and Publisher roles by default.
 
 ## Configuration
 
@@ -174,14 +214,18 @@ Override any key of [`config/config.php`](config/config.php) in your app at
 
 | Key | Default | What it does |
 |---|---|---|
+| `enabled` | `true` | Master switch. Off: every filter returns an empty string |
 | `generation` | library defaults | Default options: `mode`, `driver`, `smooth`, `background`, `long_edge`, `quality`, ... |
 | `settings_override_config` | `true` | Set `false` to make this file win over the backend settings |
 | `generate_on_upload` | `true` | Make placeholders when images are uploaded, and follow renames and deletes |
 | `lazy` | `null` (follows `app.debug`) | Generate during page renders when no queue is set up |
 | `request_budget` | `5` | Most placeholders generated in one request |
-| `sources.allow_absolute_paths` | `false` | Accept raw filesystem paths, only inside `sources.allowed_roots` |
+| `sources.allow_absolute_paths` | `false` | Accept raw filesystem paths... |
+| `sources.allowed_roots` | `[]` | ...but only inside these directories |
+| `cache.retry` | 5 tries from 15 min | Backoff for failed images: `max_attempts`, `base_minutes`, `max_minutes` |
 | `cache.remote_identity` | `full` | On S3 and similar disks, `path_only` skips checking each file's modification time |
 | `queue.connection` | `null` (default queue) | Queue connection for generation jobs |
+| `register_alias` | `true` | Register the global `Imagery` alias; turn off if the name clashes |
 
 URLs to other sites are never fetched.
 
@@ -189,7 +233,8 @@ URLs to other sites are never fetched.
 
 ```bash
 php artisan imagery:purge --failed     # retry failed images on the next view
-php artisan imagery:purge --stale      # rows made with options no longer in use
+php artisan imagery:purge --stale      # rows made with options other than the current settings
+                                       # (including per-call overrides in templates)
 php artisan imagery:purge --orphaned   # rows whose image no longer exists
 php artisan imagery:purge --all
 ```
@@ -216,6 +261,11 @@ without booting Winter:
 | `classes/RetryPolicy` | Exponential backoff for failed images |
 | `classes/RequestBudget` | The per-request cap on inline generation |
 | `classes/Defaults` | Option names, which ones change the output, available modes and drivers |
+
+A mode registered with the library's `PlaceholderGenerator::extend()` appears
+in the Settings dropdown automatically. The plugin cannot know whether it
+produces CSS, so `|lqip` treats it as it treats `css_only` and falls back to
+`dominant_color`; `|lqipStyle` renders it.
 
 The Winter-specific parts are adapters behind interfaces: `WinterMediaStorage`
 (`MediaStorage`), `DatabaseStore` + `models/Placeholder` (`PlaceholderStore`),

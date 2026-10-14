@@ -11,7 +11,7 @@ return [
     'modes' => [
         'dominant_color' => 'Dominant colour - one flat tone, cheapest',
         'gradient' => 'Gradient - four colours, no image data',
-        'blur' => 'Blurred miniature - most realistic, most bytes',
+        'blur' => 'Blurred miniature - most realistic, ~130 characters',
         'css_only' => 'CSS only (experimental) - needs a decode stylesheet',
         'thumbhash' => 'ThumbHash - a hash for APIs and apps that decode it, not CSS',
     ],
@@ -28,11 +28,11 @@ return [
         'no' => 'No',
         'mode' => [
             'label' => 'Placeholder style',
-            'comment' => 'The |lqip filter needs a value for background-image, so with "CSS only" it falls back to the dominant colour. |lqipStyle works with every style.',
+            'comment' => 'The |lqip filter needs a background-image value, so with "CSS only" or "ThumbHash" it uses the dominant colour. |lqipStyle renders "CSS only", and also uses the dominant colour for ThumbHash. Run imagery:warm after changing this on a site without a queue.',
         ],
         'driver' => [
             'label' => 'Image engine',
-            'comment' => 'Only engines installed on this server are listed. Switching engine keeps existing placeholders.',
+            'comment' => 'Only engines installed on this server are listed. Switching engine keeps existing placeholders (blur ones only if the new engine can write WebP too).',
         ],
         'format' => [
             'label' => 'Image format (blur only)',

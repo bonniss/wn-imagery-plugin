@@ -45,8 +45,7 @@
         "installer-name": "imagery"
     },
     "scripts": {
-        "test": "phpunit --testsuite=Unit",
-        "test:all": "phpunit"
+        "test": "phpunit --testsuite=Unit"
     },
     "config": {
         "allow-plugins": {

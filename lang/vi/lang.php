@@ -11,7 +11,7 @@ return [
     'modes' => [
         'dominant_color' => 'Màu chủ đạo - một màu phẳng, nhẹ nhất',
         'gradient' => 'Gradient - bốn màu, không có dữ liệu ảnh',
-        'blur' => 'Ảnh thu nhỏ làm mờ - giống thật nhất, nặng nhất',
+        'blur' => 'Ảnh thu nhỏ làm mờ - giống thật nhất, khoảng 130 ký tự',
         'css_only' => 'Chỉ CSS (thử nghiệm) - cần stylesheet giải mã',
         'thumbhash' => 'ThumbHash - chuỗi hash cho API/app tự giải mã, không phải CSS',
     ],
@@ -28,11 +28,11 @@ return [
         'no' => 'Không',
         'mode' => [
             'label' => 'Kiểu placeholder',
-            'comment' => 'Filter |lqip cần giá trị cho background-image, nên với "Chỉ CSS" nó tự dùng màu chủ đạo. |lqipStyle dùng được với mọi kiểu.',
+            'comment' => 'Filter |lqip cần giá trị cho background-image, nên với "Chỉ CSS" hoặc "ThumbHash" nó tự dùng màu chủ đạo. |lqipStyle hiển thị được "Chỉ CSS", còn với ThumbHash cũng dùng màu chủ đạo. Trên site không có queue, chạy imagery:warm sau khi đổi mục này.',
         ],
         'driver' => [
             'label' => 'Engine xử lý ảnh',
-            'comment' => 'Chỉ liệt kê engine có trên server này. Đổi engine không làm mất placeholder đã tạo.',
+            'comment' => 'Chỉ liệt kê engine có trên server này. Đổi engine không làm mất placeholder đã tạo (với blur thì engine mới cũng phải ghi được WebP).',
         ],
         'format' => [
             'label' => 'Định dạng ảnh (chỉ cho blur)',
@@ -40,7 +40,7 @@ return [
         ],
         'blur' => [
             'label' => 'Làm mờ ảnh thu nhỏ (chỉ cho blur)',
-            'comment' => 'Làm mềm để trông như ảnh mờ thay vì ô vuông nhỏ. Cũng giúp nhẹ hơn.',
+            'comment' => 'Làm mềm để trông như ảnh mờ thay vì một mảng ô vuông li ti. Cũng giúp nhẹ hơn.',
         ],
         'long_edge' => [
             'label' => 'Kích thước ảnh thu nhỏ, px (chỉ cho blur)',

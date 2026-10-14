@@ -6,18 +6,12 @@
     <testsuites>
         <!--
             Unit runs anywhere: no Winter checkout, no database, no app. It is
-            where the branching logic lives, so it is what CI runs.
+            where the branching logic lives, so it is what CI runs. Behaviour
+            inside Winter is checked by installing into a Winter app; see the
+            README's "For developers".
         -->
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
-        </testsuite>
-        <!--
-            Integration needs a real Winter application around it. Every test in
-            here skips itself when Winter's PluginTestCase is absent, so running
-            the whole file set from this repo alone stays green.
-        -->
-        <testsuite name="Integration">
-            <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
 </phpunit>

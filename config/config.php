@@ -139,8 +139,10 @@ return [
     |
     | When the resolved queue connection uses a real driver, generation is
     | pushed to a job instead of running inline. On a 'sync' connection - the
-    | Winter default, and what most shared hosting ends up with - it runs
-    | inline regardless, so this needs no configuration to be safe.
+    | Winter default, and what most shared hosting ends up with - nothing is
+    | queued: a page render generates inline only when `lazy` is on, within
+    | `request_budget`, and otherwise leaves the image to uploads and
+    | imagery:warm. So this needs no configuration to be safe.
     |
     | null uses the application's default connection.
     |

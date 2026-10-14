@@ -37,7 +37,8 @@ Requires `bonniss26/lqip` ^0.3.
 
 ### Upgrading
 
-Run `php artisan winter:up`, then `php artisan imagery:warm` once. Cache keys
+Run `composer update bonniss26/wn-imagery-plugin` (it brings lqip 0.3), then
+`php artisan winter:up`, then `php artisan imagery:warm` once. Cache keys
 written by 1.0 stay valid, so placeholders keep showing in between.
 
 ## [1.0.0] - 2026-10-11

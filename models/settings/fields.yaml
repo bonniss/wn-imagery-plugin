@@ -48,5 +48,5 @@ fields:
         label: bonniss26.imagery::lang.settings.background.label
         comment: bonniss26.imagery::lang.settings.background.comment
         type: text
-        placeholder: '#ffffff'
+        placeholder: 'e.g. #ffffff'
         span: right
